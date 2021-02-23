@@ -65,7 +65,7 @@ class Commander(object):
         # Subscribers & Publishers & Services initialisation ----------------------------------
         self.path_ready_srv = rospy.Service("path_ready", Trigger, self.make_path_ready)
         self.path_reset_srv = rospy.Service("path_reset", Trigger, self.do_path_reset)
-
+	self.pause_srv = rospy.Service("pause", Trigger, self.pause)
         # Publish waypoints as pose array - visualise them in rviz
         self.pose_array_publisher = rospy.Publisher(
             self.waypoints_list_topic, PoseArray, queue_size=1, latch=True
@@ -100,6 +100,16 @@ class Commander(object):
             self.pub_waypoints_list()
 
         return (True, "")
+
+    def pause(self, _):
+	warn("Pausing")
+	pause_pub = rospy.Publisher("move_base/cancel", GoalID, queue_size=1)
+	pause_pub.publish(GoalID())
+	warn("move_base goal cancelled.")
+	self.path_ready = False
+		
+
+	return (True, "")
 
     def pub_waypoints_list(self):
         """Helper method to publish the waypoints that should be followed."""
@@ -159,24 +169,18 @@ class Commander(object):
         # we have waypoints, let's follow them!
         while self.waypoints and not rospy.is_shutdown():
             goal = self.waypoints[0]
-            if self.dyn_config["patrol_mode"]:
-                if len(self.waypoints) == 1:
-                    warn(
-                        "In patrol mode but wth only one given waypoint, will simply navigate to it..."
-                    )
-                    self.waypoints.pop()
-                else:
-                    self.waypoints.rotate(-1)
-            else:
-                # not in patrol mode - forget about this waypoint
-                self.waypoints.popleft()
+            	
             self.send_move_base_goal(goal)
 
             if not self.distance_tolerance > 0.0:
                 # just wait until move_base reaches the goal...
                 self.move_base_client.wait_for_result()
-                info("Waiting for %f seconds before proceeding to the next goal..." % self.wait_duration)
-                time.sleep(self.wait_duration)
+                if not self.path_ready:
+                    info("Path Paused")
+                    return
+                else: 
+                    info("Waiting for %f seconds before proceeding to the next goal..." % self.wait_duration)
+                    time.sleep(self.wait_duration)
             else:
                 raise NotImplementedError("distance_tolerance not implemented yet.")
 
@@ -198,6 +202,19 @@ class Commander(object):
 
             # current waypoint has now been reached! move on to the next waypoint on the next
             # iteration
+            
+            if self.dyn_config["patrol_mode"]:
+                if len(self.waypoints) == 1:
+                    warn(
+                        "In patrol mode but wth only one given waypoint, will simply navigate to it..."
+                    )
+                    self.waypoints.pop()
+                else:
+                    self.waypoints.rotate(-1)
+            else:
+	        self.waypoints.popleft()
+               
+	    
             self.pub_waypoints_list()
 
     def run(self):
