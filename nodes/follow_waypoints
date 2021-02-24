@@ -12,6 +12,7 @@ from follow_waypoints.cfg import FollowWaypointsConfig
 from geometry_msgs.msg import PointStamped, PoseArray, PoseWithCovarianceStamped, Quaternion
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from std_srvs.srv import Trigger
+from std_msgs.msg import Empty
 
 # Miscellaneous functions
 info = rospy.loginfo
@@ -65,7 +66,7 @@ class Commander(object):
         # Subscribers & Publishers & Services initialisation ----------------------------------
         self.path_ready_srv = rospy.Service("path_ready", Trigger, self.make_path_ready)
         self.path_reset_srv = rospy.Service("path_reset", Trigger, self.do_path_reset)
-	self.pause_srv = rospy.Service("pause", Trigger, self.pause)
+	#self.pause_srv = rospy.Service("pause", Trigger, self.pause)
         # Publish waypoints as pose array - visualise them in rviz
         self.pose_array_publisher = rospy.Publisher(
             self.waypoints_list_topic, PoseArray, queue_size=1, latch=True
@@ -79,7 +80,10 @@ class Commander(object):
         self.waypoints_sub = rospy.Subscriber(
             self.waypoints_to_follow_topic, self.waypoints_topic_type, self.waypoints_topic_cb
         )
-
+	
+	#Listen for pause msg
+	self.pause_sub = rospy.Subscriber("/pause", Empty, self.pause)
+	
     def dyn_callback(self, config, _):
         """Dynamic configuration callback method."""
         self.dyn_config.update(config)
@@ -107,7 +111,6 @@ class Commander(object):
 	pause_pub.publish(GoalID())
 	warn("move_base goal cancelled.")
 	self.path_ready = False
-		
 
 	return (True, "")
 
