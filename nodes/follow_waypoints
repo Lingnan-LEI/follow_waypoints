@@ -66,8 +66,9 @@ class Commander(object):
         # Subscribers & Publishers & Services initialisation ----------------------------------
         self.path_ready_srv = rospy.Service("path_ready", Trigger, self.make_path_ready)
         self.path_reset_srv = rospy.Service("path_reset", Trigger, self.do_path_reset)
-	#self.pause_srv = rospy.Service("pause", Trigger, self.pause)
-        # Publish waypoints as pose array - visualise them in rviz
+	self.pause_srv = rospy.Service("pause", Trigger, self.pause)
+        
+	# Publish waypoints as pose array - visualise them in rviz
         self.pose_array_publisher = rospy.Publisher(
             self.waypoints_list_topic, PoseArray, queue_size=1, latch=True
         )
